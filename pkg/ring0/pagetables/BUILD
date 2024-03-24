@@ -21,7 +21,7 @@ package(
         ],
         visibility = [":__pkg__"],
     )
-    for arch in ("amd64", "arm64")
+    for arch in ("amd64", "arm64", "riscv64")
 ]
 
 [
@@ -37,7 +37,7 @@ package(
         },
     )
     for op in ("map", "unmap", "lookup", "empty", "check")
-    for arch in ("amd64", "arm64")
+    for arch in ("amd64", "arm64", "riscv64")
 ]
 
 go_library(
@@ -49,22 +49,31 @@ go_library(
         "pagetables_aarch64.go",
         "pagetables_amd64.go",
         "pagetables_arm64.go",
+        "pagetables_riscv64.go",
         "pagetables_x86.go",
         "pcids.go",
         "pcids_aarch64.go",
         "pcids_aarch64.s",
+        "pcids_riscv64.go",
+	# TODO: get HW-supported ASID length
+	#"pcids_riscv64.s",
         "pcids_x86.go",
         "walker_amd64.go",
         "walker_arm64.go",
+        "walker_riscv64.go",
         "walker_generic.go",
         ":walker_empty_amd64",
         ":walker_empty_arm64",
+        ":walker_empty_riscv64",
         ":walker_lookup_amd64",
         ":walker_lookup_arm64",
+        ":walker_lookup_riscv64",
         ":walker_map_amd64",
         ":walker_map_arm64",
+        ":walker_map_riscv64",
         ":walker_unmap_amd64",
         ":walker_unmap_arm64",
+        ":walker_unmap_riscv64",
     ],
     visibility = [
         "//pkg/ring0:__subpackages__",

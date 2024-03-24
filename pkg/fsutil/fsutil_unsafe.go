@@ -74,8 +74,10 @@ func RenameAt(oldDirFD int, oldName string, newDirFD int, newName string) error 
 		newNamePtr = unsafe.Pointer(nameBytes)
 	}
 
+	// require __ARCH_WANT_RENAMEAT 
+	// so we use SYS_RENAMEAT2 instead
 	if _, _, errno := unix.Syscall6(
-		unix.SYS_RENAMEAT,
+		unix.SYS_RENAMEAT2,
 		uintptr(oldDirFD),
 		uintptr(oldNamePtr),
 		uintptr(newDirFD),

@@ -148,6 +148,11 @@ var allowedSyscalls = seccomp.MakeSyscallRules(map[uintptr]seccomp.SyscallRule{
 			seccomp.EqualTo(unix.MSG_DONTWAIT | unix.MSG_TRUNC | unix.MSG_PEEK),
 		},
 	},
+<<<<<<< HEAD
+=======
+	// riscv64 only supports SYS_RENAMEAT2
+	//unix.SYS_RENAMEAT:        seccomp.MatchAll{},
+>>>>>>> bd30f7c45 (Initial support for riscv64)
 	unix.SYS_RESTART_SYSCALL: seccomp.MatchAll{},
 	// May be used by the runtime during panic().
 	unix.SYS_RT_SIGACTION:   seccomp.MatchAll{},

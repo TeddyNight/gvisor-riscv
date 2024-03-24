@@ -84,6 +84,17 @@ static __inline__ unsigned long rdtsc(void) {
 }
 
 static __inline__ void spinloop(void) { asm volatile("yield" : : : "memory"); }
+#elif defined(__riscv)
+static __inline__ unsigned long rdtsc(void) {
+    long val;
+    asm volatile("rdcycle %0" : "=r"(val));
+    return val;
+}
+
+static __inline__ void spinloop(void) {
+    int dummy;
+    __asm__ __volatile__ ("div %0, %0, zero" : "=r" (dummy));
+}
 #endif
 
 void *__export_context_region;

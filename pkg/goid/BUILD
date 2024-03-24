@@ -11,6 +11,7 @@ go_library(
         "goid.go",
         "goid_amd64.s",
         "goid_arm64.s",
+        "goid_riscv64.s",
     ],
     stateify = False,
     visibility = ["//visibility:public"],

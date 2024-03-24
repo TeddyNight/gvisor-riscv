@@ -11,6 +11,7 @@ go_library(
         "hosttid.go",
         "hosttid_amd64.s",
         "hosttid_arm64.s",
+        "hosttid_riscv64.s",
     ],
     visibility = ["//visibility:public"],
 )

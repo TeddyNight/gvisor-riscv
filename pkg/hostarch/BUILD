@@ -37,6 +37,7 @@ go_library(
         "addr_unsafe.go",
         "hostarch.go",
         "hostarch_arm64.go",
+        "hostarch_riscv64.go",
         "hostarch_x86.go",
         "sizes_util.go",
     ],

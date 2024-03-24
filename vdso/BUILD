@@ -25,6 +25,7 @@ genrule(
         "vdso.cc",
         "vdso_amd64.lds",
         "vdso_arm64.lds",
+        "vdso_riscv64.lds",
         "vdso_time.h",
         "vdso_time.cc",
     ],
@@ -40,7 +41,6 @@ genrule(
           # Some toolchains enable stack protector by default. Disable it, the
           # VDSO has no hooks to handle failures.
           "-fno-stack-protector " +
-          vdso_linker_option +
           "-shared " +
           "-nostdlib " +
           "-Wl,-soname=linux-vdso.so.1 " +
@@ -50,8 +50,10 @@ genrule(
           "-Wl,-z,max-page-size=4096 " +
           "-Wl,-z,common-page-size=4096 " +
           select_arch(
-              amd64 = "-Wl,-T$(location vdso_amd64.lds) ",
-              arm64 = "-Wl,-T$(location vdso_arm64.lds) ",
+              amd64 = vdso_linker_option + "-Wl,-T$(location vdso_amd64.lds) ",
+              arm64 = vdso_linker_option + "-Wl,-T$(location vdso_arm64.lds) ",
+              # riscv doesn't support gold
+              riscv64 = "-Wl,-T$(location vdso_riscv64.lds) -D__riscv__=1 ",
               no_match_error = "unsupported architecture",
           ) +
           "-o $(location vdso.so) " +

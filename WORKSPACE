@@ -192,7 +192,9 @@ cc_crosstool(
     c_version = "gnu17",
 )
 
+# TODO: switch between aarch64 and riscv64
 register_toolchains("//:cc_toolchain_k8", "//:cc_toolchain_aarch64")
+register_toolchains("//:cc_toolchain_k8", "//:cc_toolchain_riscv64")
 
 # Load protobuf dependencies.
 http_archive(

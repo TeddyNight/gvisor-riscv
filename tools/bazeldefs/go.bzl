@@ -159,7 +159,7 @@ def go_context(ctx, goos = None, goarch = None, std = False):
     )
 
 def select_goarch():
-    return select_arch(amd64 = "amd64", arm64 = "arm64")
+    return select_arch(amd64 = "amd64", arm64 = "arm64", riscv64 = "riscv64")
 
 def select_goos():
     return select_system(

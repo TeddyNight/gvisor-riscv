@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux && (amd64 || arm64)
+//go:build linux && (amd64 || arm64 || riscv64)
 // +build linux
-// +build amd64 arm64
+// +build amd64 arm64 riscv64
 
 package ptrace
 

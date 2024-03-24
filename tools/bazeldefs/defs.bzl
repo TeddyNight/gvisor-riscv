@@ -56,6 +56,16 @@ arch_config = [
     "//command_line_option:platforms",
 ]
 
+def riscv64_config(settings, attr):
+    return {
+        # Race builds are always disabled for cross-architecture generation. We
+        # can't run it locally anyways, what value can this provide?
+        "@io_bazel_rules_go//go/config:race": False,
+        "//command_line_option:cpu": "riscv64",
+        "//command_line_option:crosstool_top": "@crosstool//:toolchains",
+        "//command_line_option:platforms": "@io_bazel_rules_go//go/toolchain:linux_riscv64",
+    }
+
 def arm64_config(settings, attr):
     return {
         # Race builds are always disabled for cross-architecture generation. We
