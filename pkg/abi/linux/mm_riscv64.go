@@ -23,4 +23,4 @@ package linux
 //
 // The array has to be sorted in decreasing order.
 // SV57 supports 5-level paging
-var feasibleTaskSizes = []uintptr{1 << 52, 1 << 48, 1 << 39}
+var feasibleTaskSizes = []uintptr{0x100000000000000, 0x800000000000, 0x4000000000}
