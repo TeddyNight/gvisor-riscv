@@ -28,7 +28,7 @@ func (c *Context64) SyscallSaveOrig() {
 
 // SyscallNo returns the syscall number according to the 64-bit convention.
 func (c *Context64) SyscallNo() uintptr {
-	return uintptr(c.OrigA7)
+	return uintptr(c.Regs.Regs[17])
 }
 
 // SyscallArgs provides syscall arguments according to the 64-bit convention.
@@ -52,7 +52,6 @@ func (c *Context64) SyscallArgs() SyscallArguments {
 // arch/riscv64/kernel/signal.c:do_signal()
 func (c *Context64) RestartSyscall() {
 	c.Regs.Regs[0] -= SyscallWidth
-	c.Regs.Regs[17] = uint64(c.OrigA7)
 }
 
 // RestartSyscallWithRestartBlock implements Context.RestartSyscallWithRestartBlock.
