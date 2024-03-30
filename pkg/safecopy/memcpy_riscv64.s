@@ -11,10 +11,8 @@
 // It must have the same frame configuration as memcpy so that it can undo any
 // potential call frame set up by the assembler.
 TEXT handleMemcpyFault(SB), NOSPLIT, $0-36
-	ADDI addr+24(FP), T0
-	ADDI sig+32(FP), T1
-	SD A0, (T0)
-	SW A1, (T1)
+	MOV A0, addr+24(FP)
+	MOV A1, sig+32(FP)
 	RET
 
 // memcpy copies data from src to dst. If a SIGSEGV or SIGBUS signal is received
@@ -33,16 +31,15 @@ TEXT ·memcpy(SB), NOSPLIT, $-8-36
 	// Store 0 as the returned signal number. If we run to completion,
 	// this is the value the caller will see; if a signal is received,
 	// handleMemcpyFault will store a different value in this address.
-	ADDI sig+32(FP), T0
-	SW ZERO, (T0)
+	MOV ZERO, sig+32(FP)
 
-	ADDI dst+0(FP), T0
-	ADDI src+8(FP), T1
-	LD (T0), X10
-	LD (T1), X11
-	ADDI n+16(FP), T0
-	LD (T0), X12
+	MOV  dst+0(FP), X10
+	MOV  src+8(FP), X11
+	MOV  n+16(FP), X12
 
+	// X10 = to
+	// X11 = from
+	// X12 = n
 	BEQ	X10, X11, done
 	BEQZ	X12, done
 
@@ -64,8 +61,8 @@ TEXT ·memcpy(SB), NOSPLIT, $-8-36
 	SUB	X5, X9, X5
 	SUB	X5, X12, X12
 f_align:
-	ADDI	$1, ZERO, X13
-	SUB	X13, X5
+	ADDI    $1, ZERO, T1
+	SUB	T1, X5
 	MOVB	0(X11), X14
 	MOVB	X14, 0(X10)
 	ADD	$1, X10
@@ -98,8 +95,8 @@ f_loop64:
 	MOV	X21, 56(X10)
 	ADD	$64, X10
 	ADD	$64, X11
-	ADDI	$64, ZERO, X13
-	SUB	X13, X12
+	ADDI    $64, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop64
 	BEQZ	X12, done
 
@@ -117,8 +114,8 @@ f_loop32:
 	MOV	X17, 24(X10)
 	ADD	$32, X10
 	ADD	$32, X11
-	ADDI	$32, ZERO, X13
-	SUB	X13, X12
+	ADDI    $32, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop32
 	BEQZ	X12, done
 
@@ -132,8 +129,8 @@ f_loop16:
 	MOV	X15, 8(X10)
 	ADD	$16, X10
 	ADD	$16, X11
-	ADDI	$16, ZERO, X13
-	SUB	X13, X12
+	ADDI    $16, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop16
 	BEQZ	X12, done
 
@@ -145,8 +142,8 @@ f_loop8:
 	MOV	X14, 0(X10)
 	ADD	$8, X10
 	ADD	$8, X11
-	ADDI	$8, ZERO, X13
-	SUB	X13, X12
+	ADDI    $8, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop8
 	BEQZ	X12, done
 	JMP	f_loop4_check
@@ -173,8 +170,8 @@ f_loop8_unaligned:
 	MOVB	X21, 7(X10)
 	ADD	$8, X10
 	ADD	$8, X11
-	ADDI	$8, ZERO, X13
-	SUB	X13, X12
+	ADDI    $8, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop8_unaligned
 
 f_loop4_check:
@@ -191,8 +188,8 @@ f_loop4:
 	MOVB	X17, 3(X10)
 	ADD	$4, X10
 	ADD	$4, X11
-	ADDI	$4, ZERO, X13
-	SUB	X13, X12
+	ADDI    $4, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, f_loop4
 
 f_loop1:
@@ -201,8 +198,8 @@ f_loop1:
 	MOVB	X14, 0(X10)
 	ADD	$1, X10
 	ADD	$1, X11
-	ADDI	$1, ZERO, X13
-	SUB	X13, X12
+	ADDI    $1, ZERO, T1
+	SUB	T1, X12
 	JMP	f_loop1
 
 backward:
@@ -222,10 +219,10 @@ backward:
 	// Move one byte at a time until we reach 8 byte alignment.
 	SUB	X5, X12, X12
 b_align:
-	ADDI	$1, ZERO, X13
-	SUB	X13, X5
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $1, ZERO, T1
+	SUB	T1, X5
+	SUB	T1, X10
+	SUB	T1, X11
 	MOVB	0(X11), X14
 	MOVB	X14, 0(X10)
 	BNEZ	X5, b_align
@@ -238,9 +235,9 @@ b_loop_check:
 	MOV	$64, X9
 	BLT	X12, X9, b_loop32_check
 b_loop64:
-	ADDI	$64, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $64, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOV	0(X11), X14
 	MOV	8(X11), X15
 	MOV	16(X11), X16
@@ -257,8 +254,8 @@ b_loop64:
 	MOV	X19, 40(X10)
 	MOV	X20, 48(X10)
 	MOV	X21, 56(X10)
-	ADDI	$64, ZERO, X13
-	SUB	X13, X12
+	ADDI    $64, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, b_loop64
 	BEQZ	X12, done
 
@@ -266,9 +263,9 @@ b_loop32_check:
 	MOV	$32, X9
 	BLT	X12, X9, b_loop16_check
 b_loop32:
-	ADDI	$32, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $32, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOV	0(X11), X14
 	MOV	8(X11), X15
 	MOV	16(X11), X16
@@ -277,8 +274,8 @@ b_loop32:
 	MOV	X15, 8(X10)
 	MOV	X16, 16(X10)
 	MOV	X17, 24(X10)
-	ADDI	$32, ZERO, X13
-	SUB	X13, X12
+	ADDI    $32, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, b_loop32
 	BEQZ	X12, done
 
@@ -286,14 +283,15 @@ b_loop16_check:
 	MOV	$16, X9
 	BLT	X12, X9, b_loop8_check
 b_loop16:
-	ADDI	$16, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $16, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOV	0(X11), X14
 	MOV	8(X11), X15
 	MOV	X14, 0(X10)
 	MOV	X15, 8(X10)
-	SUB	X13, X12
+	ADDI    $16, ZERO, T1
+	SUB	T1, X12
 	BGE	X12, X9, b_loop16
 	BEQZ	X12, done
 
@@ -301,12 +299,12 @@ b_loop8_check:
 	MOV	$8, X9
 	BLT	X12, X9, b_loop4_check
 b_loop8:
-	ADDI	$8, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $8, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOV	0(X11), X14
 	MOV	X14, 0(X10)
-	SUB	X13, X12
+	SUB	T1, X12
 	BGE	X12, X9, b_loop8
 	BEQZ	X12, done
 	JMP	b_loop4_check
@@ -315,9 +313,9 @@ b_loop8_unaligned_check:
 	MOV	$8, X9
 	BLT	X12, X9, b_loop4_check
 b_loop8_unaligned:
-	ADDI	$8, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $8, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOVB	0(X11), X14
 	MOVB	1(X11), X15
 	MOVB	2(X11), X16
@@ -334,16 +332,16 @@ b_loop8_unaligned:
 	MOVB	X19, 5(X10)
 	MOVB	X20, 6(X10)
 	MOVB	X21, 7(X10)
-	SUB	X13, X12
+	SUB	T1, X12
 	BGE	X12, X9, b_loop8_unaligned
 
 b_loop4_check:
 	MOV	$4, X9
 	BLT	X12, X9, b_loop1
 b_loop4:
-	ADDI	$4, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $4, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOVB	0(X11), X14
 	MOVB	1(X11), X15
 	MOVB	2(X11), X16
@@ -352,25 +350,24 @@ b_loop4:
 	MOVB	X15, 1(X10)
 	MOVB	X16, 2(X10)
 	MOVB	X17, 3(X10)
-	SUB	X13, X12
+	SUB	T1, X12
 	BGE	X12, X9, b_loop4
 
 b_loop1:
 	BEQZ	X12, done
-	ADDI	$1, ZERO, X13
-	SUB	X13, X10
-	SUB	X13, X11
+	ADDI    $1, ZERO, T1
+	SUB	T1, X10
+	SUB	T1, X11
 	MOVB	0(X11), X14
 	MOVB	X14, 0(X10)
-	SUB	X13, X12
+	SUB	T1, X12
 	JMP	b_loop1
 
 done:
 	RET
 
+// func addrOfMemcpy() uintptr
 TEXT ·addrOfMemcpy(SB), $0-8
-	ADDI	$·memcpy(SB), T0
-	LD	(T0), A0
-	ADDI    ret+0(FP), T1
-	SD	A0, (T1)
+	MOV	$·memcpy(SB), A0
+	MOV	A0, ret+0(FP)
 	RET
