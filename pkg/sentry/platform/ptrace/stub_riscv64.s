@@ -54,7 +54,7 @@ begin:
 	MOV $SYS_GETPID, A7
 	ECALL
 
-	BLT ZERO, A0, error
+	BLT A0, ZERO, error
 
 	MOV ZERO, S8
 
@@ -67,22 +67,23 @@ begin:
 	ECALL
 
 	// The sentry sets S8 to 1 when creating stub process.
-	BNE ZERO, S8, clone
+	MOV $1, T1
+	BEQ T1, S8, clone
 
 done:
 	// Notify the Sentry that syscall exited.
 	EBREAK
-	BEQ ZERO, ZERO, done // Be paranoid.
+	JMP done // Be paranoid
 clone:
 	// subprocess.createStub clones a new stub process that is untraced,
 	// thus executing this code. We setup the PDEATHSIG before SIGSTOPing
 	// ourselves for attach by the tracer.
 	//
 	// S7 has been updated with the expected PPID.
-	BEQ ZERO, S7, begin
+	BEQ ZERO, A0, begin
 
 	// The clone system call returned a non-zero value.
-	BEQ ZERO, A0, done
+	JMP done
 
 error:
 	// Exit with -errno.
@@ -110,4 +111,4 @@ TEXT ·addrOfStub(SB), $0-8
 TEXT ·stubCall(SB),NOSPLIT,$0-16
 	MOV addr+0(FP), A0
 	MOV pid+8(FP), S7
-	RET
+	JMP (A0)
