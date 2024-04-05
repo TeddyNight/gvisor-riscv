@@ -22,9 +22,11 @@ package pagetables
 //go:nosplit
 func (w *Walker) iterateRangeCanonical(start, end uintptr) bool {
 	pgdEntryIndex := w.pageTables.root
+	/*
 	if start >= upperBottom {
 		pgdEntryIndex = w.pageTables.archPageTables.root
 	}
+	*/
 
 	for pgdIndex := (uint16((start & pgdMask) >> pgdShift)); start < end && pgdIndex < entriesPerPage; pgdIndex++ {
 		var (

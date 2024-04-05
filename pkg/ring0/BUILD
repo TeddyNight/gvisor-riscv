@@ -18,6 +18,7 @@ go_library(
         "entry_amd64.s",
         "entry_arm64.go",
         "entry_arm64.s",
+        "entry_riscv64.go",
         "entry_riscv64.s",
         "kernel.go",
         "kernel_amd64.go",

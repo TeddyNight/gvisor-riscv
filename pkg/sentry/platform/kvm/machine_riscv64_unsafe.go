@@ -18,7 +18,7 @@
 package kvm
 
 import (
-	//"fmt"
+	"fmt"
 	//"reflect"
 	"unsafe"
 
@@ -27,44 +27,22 @@ import (
 	"gvisor.dev/gvisor/pkg/hostarch"
 	"gvisor.dev/gvisor/pkg/ring0"
 	//"gvisor.dev/gvisor/pkg/ring0/pagetables"
-	//"gvisor.dev/gvisor/pkg/sentry/platform"
+	"gvisor.dev/gvisor/pkg/sentry/platform"
 	//ktime "gvisor.dev/gvisor/pkg/sentry/time"
 )
 
-type kvmVcpuInit struct {
-	target   uint32
-	features [7]uint32
-}
-
-var vcpuInit kvmVcpuInit
-
 // initArchState initializes architecture-specific state.
 func (m *machine) initArchState() error {
-	/*
-	if _, _, errno := unix.RawSyscall(
-		unix.SYS_IOCTL,
-		uintptr(m.fd),
-		_KVM_ARM_PREFERRED_TARGET,
-		uintptr(unsafe.Pointer(&vcpuInit))); errno != 0 {
-		panic(fmt.Sprintf("error setting KVM_ARM_PREFERRED_TARGET failed: %v", errno))
-	}
-
-	// Initialize all vCPUs on ARM64, while this does not happen on x86_64.
-	// The reason for the difference is that ARM64 and x86_64 have different KVM timer mechanisms.
-	// If we create vCPU dynamically on ARM64, the timer for vCPU would mess up for a short time.
-	// For more detail, please refer to https://github.com/google/gvisor/issues/5739
 	m.mu.Lock()
 	for i := 0; i < m.maxVCPUs; i++ {
 		m.createVCPU(i)
 	}
 	m.mu.Unlock()
-	*/
 	return nil
 }
 
 // initArchState initializes architecture-specific state.
 func (c *vCPU) initArchState() error {
-	/*
 	var (
 		reg     kvmOneReg
 		data    uint64
@@ -75,6 +53,7 @@ func (c *vCPU) initArchState() error {
 	reg.addr = uint64(reflect.ValueOf(&data).Pointer())
 	regGet.addr = uint64(reflect.ValueOf(&dataGet).Pointer())
 
+	/*
 	vcpuInit.features[0] |= (1 << _KVM_ARM_VCPU_PSCI_0_2)
 	if _, _, errno := unix.RawSyscall(
 		unix.SYS_IOCTL,
@@ -150,14 +129,52 @@ func (c *vCPU) initArchState() error {
 	if err := c.setOneRegister(&reg); err != nil {
 		return err
 	}
+	*/
+
+	// tp
+	reg.id = _KVM_RISCV64_REGS_TP
+	data = uint64(reflect.ValueOf(&c.CPU).Pointer() | ring0.KernelStartAddress)
+	if err := c.setOneRegister(&reg); err != nil {
+		return err
+	}
+
+	// sp
+	reg.id = _KVM_RISCV64_REGS_SP
+	data = c.CPU.StackTop()
+	if err := c.setOneRegister(&reg); err != nil {
+		return err
+	}
+
+	// satp
+	reg.id = _KVM_RISCV64_REGS_SATP
+	data = c.machine.kernel.PageTables.SATP(false, 0)
+	if err := c.setOneRegister(&reg); err != nil {
+		return err
+	}
 
 	// pc
-	reg.id = _KVM_ARM64_REGS_PC
+	reg.id = _KVM_RISCV64_REGS_PC
 	data = uint64(ring0.AddrOfStart())
 	if err := c.setOneRegister(&reg); err != nil {
 		return err
 	}
 
+	// sie
+	reg.id = _KVM_RISCV64_REGS_SIE
+	data = _SIE_DEFAULT
+	if err := c.setOneRegister(&reg); err != nil {
+		return err
+	}
+
+	// stvec
+	reg.id = _KVM_RISCV64_REGS_STVEC
+	vectorLocation := ring0.AddrOfVectors()
+	data = uint64(ring0.KernelStartAddress | vectorLocation)
+	if err := c.setOneRegister(&reg); err != nil {
+		return err
+	}
+
+	/*
 	// vbar_el1
 	reg.id = _KVM_ARM64_REGS_VBAR_EL1
 	vectorLocation := ring0.AddrOfVectors()
@@ -180,7 +197,8 @@ func (c *vCPU) initArchState() error {
 	}
 	*/
 
-	return c.setSystemTime()
+	//return c.setSystemTime()
+	return nil
 }
 
 // setTSC sets the counter Virtual Offset.
@@ -297,51 +315,60 @@ func (c *vCPU) getOneRegister(reg *kvmOneReg) error {
 
 // SwitchToUser unpacks architectural-details.
 func (c *vCPU) SwitchToUser(switchOpts ring0.SwitchOpts, info *linux.SignalInfo) (hostarch.AccessType, error) {
-	return hostarch.NoAccess, nil
-	/*
 	// Check for canonical addresses.
-	if regs := switchOpts.Registers; !ring0.IsCanonical(regs.Pc) {
-		return nonCanonical(regs.Pc, int32(unix.SIGSEGV), info)
-	} else if !ring0.IsCanonical(regs.Sp) {
-		return nonCanonical(regs.Sp, int32(unix.SIGSEGV), info)
+	if regs := switchOpts.Registers; !ring0.IsCanonical(regs.Regs[0]) {
+		return nonCanonical(regs.Regs[0], int32(unix.SIGSEGV), info)
+	} else if !ring0.IsCanonical(regs.Regs[2]) {
+		return nonCanonical(regs.Regs[2], int32(unix.SIGSEGV), info)
 	}
 
 	// Assign PCIDs.
+	/*
 	if c.PCIDs != nil {
 		var requireFlushPCID bool // Force a flush?
 		switchOpts.UserASID, requireFlushPCID = c.PCIDs.Assign(switchOpts.PageTables)
 		switchOpts.Flush = switchOpts.Flush || requireFlushPCID
 	}
+	*/
 
 	var vector ring0.Vector
-	ttbr0App := switchOpts.PageTables.TTBR0_EL1(false, 0)
-	c.SetTtbr0App(uintptr(ttbr0App))
+	//satpVal := switchOpts.PageTables.SATP(false, 0)
+	//c.SetSatp(uintptr(satpVal))
 
-	// Full context-switch supporting for Arm64.
-	// The Arm64 user-mode execution state consists of:
+	// Full context-switch supporting for RISCV64.
+	// The RISCV64 user-mode execution state consists of:
 	// x0-x30
 	// PC, SP, PSTATE
 	// V0-V31: 32 128-bit registers for floating point, and simd
 	// FPSR, FPCR
 	// TPIDR_EL0, used for TLS
-	appRegs := switchOpts.Registers
-	c.SetAppAddr(ring0.KernelStartAddress | uintptr(unsafe.Pointer(appRegs)))
+	//appRegs := switchOpts.Registers
+	//c.SetAppAddr(ring0.KernelStartAddress | uintptr(unsafe.Pointer(appRegs)))
 
+	// Past this point, stack growth can cause system calls (and a break
+	// from guest mode). So we need to ensure that between the bluepill
+	// call here and the switch call immediately below, no additional
+	// allocations occur.
 	entersyscall()
 	bluepill(c)
 	vector = c.CPU.SwitchToUser(switchOpts)
 	exitsyscall()
 
 	switch vector {
+		/*
 	case ring0.Syscall:
 		// Fast path: system call executed.
 		return hostarch.NoAccess, nil
+		*/
 	case ring0.PageFault:
 		return c.fault(int32(unix.SIGSEGV), info)
+		/*
 	case ring0.El0ErrNMI:
 		return c.fault(int32(unix.SIGBUS), info)
+		*/
 	case ring0.Vector(bounce): // ring0.VirtualizationException.
 		return hostarch.NoAccess, platform.ErrContextInterrupt
+		/*
 	case ring0.El0SyncUndef:
 		return c.fault(int32(unix.SIGILL), info)
 	case ring0.El0SyncDbg:
@@ -360,11 +387,10 @@ func (c *vCPU) SwitchToUser(switchOpts ring0.SwitchOpts, info *linux.SignalInfo)
 	case ring0.El0SyncSys,
 		ring0.El0SyncWfx:
 		return hostarch.NoAccess, nil // skip for now.
+		*/
 	default:
 		panic(fmt.Sprintf("unexpected vector: 0x%x", vector))
 	}
-	*/
-
 }
 
 //go:nosplit

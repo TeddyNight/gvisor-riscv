@@ -30,55 +30,98 @@
 // done in the Go handlers.
 #define SIGINFO_SIGNO 0x0
 #define SIGINFO_CODE 0x8
-#define CONTEXT_PC  0x1B8
-#define CONTEXT_R0 0xB8
+#define CONTEXT_PC  0xB0
+#define CONTEXT_A7 0x138
 
 #define SYS_MMAP 222
 
-// getTLS returns the value of TPIDR_EL0 register.
-TEXT ·getTLS(SB),NOSPLIT,$0-8
-	RET
-
-// setTLS writes the TPIDR_EL0 value.
-TEXT ·setTLS(SB),NOSPLIT,$0-8
-	RET
-
 // See bluepill.go.
 TEXT ·bluepill(SB),NOSPLIT,$0
+begin:
+	MOV	vcpu+0(FP), T1
+	MOV	$VCPU_CPU(T1), T2
+	//ORR $0xffff000000000
+check_vcpu:
+	BEQ	T2, TP, right_vcpu
+wrong_vcpu:
+	CALL	·redpill(SB)
+	JMP	begin
+right_vcpu:
 	RET
 
 // sighandler: see bluepill.go for documentation.
 //
 // The arguments are the following:
 //
-// 	R0 - The signal number.
-// 	R1 - Pointer to siginfo_t structure.
-// 	R2 - Pointer to ucontext structure.
+// 	A0 - The signal number.
+// 	A1 - Pointer to siginfo_t structure.
+// 	A2 - Pointer to ucontext structure.
 //
 TEXT ·sighandler(SB),NOSPLIT,$0
+	MOV	SIGINFO_SIGNO(A1), T1
+	MOV	$1, T2
+	BNE	T1, T2, fallback
+
+	MOV	CONTEXT_PC(A2), T1
+	BEQ	ZERO, T1, fallback
+
+	MOV	A2, 8(SP)
+	JMP	·bluepillHandler(SB)
+
 	RET
+
+fallback:
+	// Jump to the previous signal handler.
+	JMP	·savedHandler(SB)
 
 // func addrOfSighandler() uintptr
 TEXT ·addrOfSighandler(SB), $0-8
+	MOV	$·sighandler(SB), A0
+	MOV	A0, ret+0(FP)
 	RET
 
 // The arguments are the following:
 //
-// 	R0 - The signal number.
-// 	R1 - Pointer to siginfo_t structure.
-// 	R2 - Pointer to ucontext structure.
+// 	A0 - The signal number.
+// 	A1 - Pointer to siginfo_t structure.
+// 	A2 - Pointer to ucontext structure.
 //
 TEXT ·sigsysHandler(SB),NOSPLIT,$0
+	// si_code should be SYS_SECCOMP.
+	MOV	SIGINFO_CODE(A1), T1
+	MOV	$1, T2
+	BNE	T1, T2, fallback
+
+	MOV	CONTEXT_A7(A2), T1
+	MOV	$SYS_MMAP, T2
+	BNE	T1, T2, fallback
+
+	MOV	A2, 8(SP)
+	JMP	·seccompMmapHandler(SB)   // Call the handler.
+
 	RET
+
+fallback:
+	// Jump to the previous signal handler.
+	JMP	·savedHandler(SB)
 
 // func addrOfSighandler() uintptr
 TEXT ·addrOfSigsysHandler(SB), $0-8
+	MOV	$·sigsysHandler(SB), A0
+	MOV	A0, ret+0(FP)
 	RET
 
-// dieTrampoline: see bluepill.go, bluepill_arm64_unsafe.go for documentation.
+// dieTrampoline: see bluepill.go, bluepill_riscv64.go for documentation.
 TEXT ·dieTrampoline(SB),NOSPLIT,$0
-	RET
+	// A0: Fake the old PC as caller
+	// A1: First argument (vCPU)
+	MOV	A1, -8(SP) // A1: First argument (vCPU)
+	MOV	A0, -16(SP) // A0: Fake the old PC as caller
+	ADDI	$-16, SP, SP 
+	JMP ·dieHandler(SB)
 
 // func addrOfDieTrampoline() uintptr
 TEXT ·addrOfDieTrampoline(SB), $0-8
+	MOV	$·dieTrampoline(SB), A0
+	MOV	A0, ret+0(FP)
 	RET

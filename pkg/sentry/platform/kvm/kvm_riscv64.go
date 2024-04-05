@@ -33,8 +33,6 @@ type kvmOneReg struct {
 // riscv64HypercallMMIOBase is MMIO base address used to dispatch hypercalls.
 var riscv64HypercallMMIOBase uintptr
 
-const KVM_NR_SPSR = 5
-
 /*
 type userFpsimdState struct {
 	vregs    [64]uint64
@@ -69,7 +67,7 @@ type kvmVcpuEvents struct {
 // updateGlobalOnce does global initialization. It has to be called only once.
 func updateGlobalOnce(fd int) error {
 	err := updateSystemValues(int(fd))
-	//ring0.Init()
+	ring0.Init()
 	physicalInit()
 	// The linux.Task represents the possible largest task size, which the UserspaceSize shouldn't be larger than.
 	if linux.TaskSize < ring0.UserspaceSize {

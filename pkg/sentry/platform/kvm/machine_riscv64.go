@@ -18,7 +18,7 @@
 package kvm
 
 import (
-	"fmt"
+	//"fmt"
 	"runtime"
 
 	"golang.org/x/sys/unix"
@@ -62,77 +62,8 @@ func (m *machine) mapUpperHalf(pageTable *pagetables.PageTables) {
 	})
 }
 
-// archPhysicalRegions fills readOnlyGuestRegions and allocates separate
-// physical regions form them.
 func archPhysicalRegions(physicalRegions []physicalRegion) []physicalRegion {
-	rdRegions := []virtualRegion{}
-	if err := applyVirtualRegions(func(vr virtualRegion) {
-		if excludeVirtualRegion(vr) {
-			return // skip region.
-		}
-		// Skip PROT_NONE mappings. Go-runtime uses them as place
-		// holders for future read-write mappings.
-		if !vr.accessType.Write && vr.accessType.Read {
-			rdRegions = append(rdRegions, vr)
-		}
-	}); err != nil {
-		panic(fmt.Sprintf("error parsing /proc/self/maps: %v", err))
-	}
-
-	// Add an unreachable region.
-	rdRegions = append(rdRegions, virtualRegion{
-		region: region{
-			virtual: 0xffffffffffffffff,
-			length:  0,
-		},
-	})
-
-	var regions []physicalRegion
-	addValidRegion := func(r *physicalRegion, virtual, length uintptr, readOnly bool) {
-		if length == 0 {
-			return
-		}
-		regions = append(regions, physicalRegion{
-			region: region{
-				virtual: virtual,
-				length:  length,
-			},
-			physical: r.physical + (virtual - r.virtual),
-			readOnly: readOnly,
-		})
-	}
-	i := 0
-	for _, pr := range physicalRegions {
-		start := pr.virtual
-		end := pr.virtual + pr.length
-		for start < end {
-			rdRegion := rdRegions[i].region
-			rdStart := rdRegion.virtual
-			rdEnd := rdRegion.virtual + rdRegion.length
-			if rdEnd <= start {
-				i++
-				continue
-			}
-			if rdStart > start {
-				newEnd := rdStart
-				if end < rdStart {
-					newEnd = end
-				}
-				addValidRegion(&pr, start, newEnd-start, false)
-				start = rdStart
-				continue
-			}
-			if rdEnd < end {
-				addValidRegion(&pr, start, rdEnd-start, true)
-				start = rdEnd
-				continue
-			}
-			addValidRegion(&pr, start, end-start, start >= rdStart && end <= rdEnd)
-			start = end
-		}
-	}
-
-	return regions
+	return physicalRegions
 }
 
 // nonCanonical generates a canonical address return.
@@ -176,8 +107,6 @@ func isWriteFault(code uint64) bool {
 //
 //go:nosplit
 func (c *vCPU) fault(signal int32, info *linux.SignalInfo) (hostarch.AccessType, error) {
-	return hostarch.NoAccess, platform.ErrContextInterrupt
-	/*
 	bluepill(c) // Probably no-op, but may not be.
 	faultAddr := c.FaultAddr()
 	code, user := c.ErrorCode()
@@ -200,6 +129,7 @@ func (c *vCPU) fault(signal int32, info *linux.SignalInfo) (hostarch.AccessType,
 		}
 	}
 
+	/*
 	ret := code & _ESR_ELx_FSC
 	switch ret {
 	case _ESR_SEGV_MAPERR_L0, _ESR_SEGV_MAPERR_L1, _ESR_SEGV_MAPERR_L2, _ESR_SEGV_MAPERR_L3:
@@ -209,9 +139,9 @@ func (c *vCPU) fault(signal int32, info *linux.SignalInfo) (hostarch.AccessType,
 	default:
 		info.Code = 2
 	}
+	*/
 
 	return accessType, platform.ErrContextSignal
-	*/
 }
 
 // getMaxVCPU get max vCPU number

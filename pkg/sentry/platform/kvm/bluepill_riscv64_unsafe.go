@@ -42,21 +42,7 @@ func fpsimdPtr(addr *byte) *arch.FpregsContext {
 func dieArchSetup(c *vCPU, context *arch.SignalContext64, guestRegs *userRegs) {
 	// If the vCPU is in user mode, we set the stack to the stored stack
 	// value in the vCPU itself. We don't want to unwind the user stack.
-	/*
-	if guestRegs.Regs.Pstate&ring0.PsrModeMask == ring0.UserFlagsSet {
-		regs := c.CPU.Registers()
-		context.Regs[0] = regs.Regs[0]
-		context.Sp = regs.Sp
-		context.Regs[29] = regs.Regs[29] // stack base address
-	} else {
-		context.Regs[0] = guestRegs.Regs.Pc
-		context.Sp = guestRegs.Regs.Sp
-		context.Regs[29] = guestRegs.Regs.Regs[29]
-		context.Pstate = guestRegs.Regs.Pstate
-	}
-	context.Regs[1] = uint64(uintptr(unsafe.Pointer(c)))
-	context.Pc = uint64(dieTrampolineAddr)
-	*/
+	// TODO
 }
 
 // bluepillArchFpContext returns the arch-specific fpsimd context.
@@ -68,18 +54,9 @@ func bluepillArchFpContext(context unsafe.Pointer) *arch.FpregsContext {
 
 // getHypercallID returns hypercall ID.
 //
-// On Arm64, the MMIO address should be 64-bit aligned.
-//
 //go:nosplit
 func getHypercallID(addr uintptr) int {
-	/*
-	if addr < riscv64HypercallMMIOBase || addr >= (riscv64HypercallMMIOBase+_AARCH64_HYPERCALL_MMIO_SIZE) {
-		return _KVM_HYPERCALL_MAX
-	} else {
-		return int(((addr) - riscv64HypercallMMIOBase) >> 3)
-	}
-	*/
-	return 0
+	return _KVM_HYPERCALL_MAX
 }
 
 // bluepillStopGuest is responsible for injecting sError.

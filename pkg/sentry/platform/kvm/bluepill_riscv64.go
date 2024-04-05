@@ -28,16 +28,6 @@ var (
 	bluepillSignal = unix.SIGILL
 )
 
-// getTLS returns the value of TPIDR_EL0 register.
-//
-//go:nosplit
-func getTLS() (value uint64)
-
-// setTLS writes the TPIDR_EL0 value.
-//
-//go:nosplit
-func setTLS(value uint64)
-
 // bluepillArchEnter is called during bluepillEnter.
 //
 //go:nosplit
@@ -46,10 +36,8 @@ func bluepillArchEnter(context *arch.SignalContext64) (c *vCPU) {
 	regs := c.CPU.Registers()
 	regs.Regs = context.Regs
 	/*
-	regs.Pstate = context.Pstate
-	regs.Pstate &^= uint64(ring0.PsrFlagsClear)
-	regs.Pstate |= ring0.KernelFlagsSet
-	regs.TPIDR_EL0 = getTLS()
+	regs.Regs[32] &^= uint64(ring0.PsrFlagsClear)
+	regs.Regs[32] |= ring0.KernelFlagSet
 	*/
 
 	return
@@ -62,11 +50,11 @@ func bluepillArchExit(c *vCPU, context *arch.SignalContext64) {
 	regs := c.CPU.Registers()
 	context.Regs = regs.Regs
 	/*
-	context.Pstate = regs.Pstate
-	context.Pstate &^= uint64(ring0.PsrFlagsClear)
-	context.Pstate |= ring0.UserFlagsSet
-	setTLS(regs.TPIDR_EL0)
+	regs.Regs[32] &^= uint64(ring0.PsrFlagsClear)
+	regs.Regs[32] |= ring0.UserFlagSet
+	*/
 
+	/*
 	lazyVfp := c.GetLazyVFP()
 	if lazyVfp != 0 {
 		fpsimd := fpsimdPtr(c.FloatingPointState().BytePointer()) // escapes: no

@@ -54,10 +54,10 @@ func (c *CPU) StackTop() uint64 {
 //
 //go:nosplit
 func IsCanonical(addr uint64) bool {
-	return addr <= 0x0000ffffffffffff || addr >= 0xffff000000000000
+	return addr <= 0x00007fffffffffff || addr >= 0xffff800000000000
 }
 
-// SwitchToUser performs an eret.
+// SwitchToUser performs an sret.
 //
 // The return value is the exception vector.
 //
@@ -65,33 +65,8 @@ func IsCanonical(addr uint64) bool {
 //
 //go:nosplit
 func (c *CPU) SwitchToUser(switchOpts SwitchOpts) (vector Vector) {
-	/*
-	storeAppASID(uintptr(switchOpts.UserASID))
-	storeEl0Fpstate(switchOpts.FloatingPointState.BytePointer())
-
-	if switchOpts.Flush {
-		LocalFlushTlbByASID(uintptr(switchOpts.UserASID))
-	}
-
-	regs := switchOpts.Registers
-
-	regs.Pstate &= ^uint64(PsrFlagsClear)
-	regs.Pstate |= UserFlagsSet
-
-	fpDisableTrap := CPACREL1()
-	if fpDisableTrap != 0 {
-		FPSIMDEnableTrap()
-	}
-
-	kernelExitToEl0()
-
-	fpDisableTrap = CPACREL1()
-	if fpDisableTrap != 0 {
-		SaveFloatingPoint(switchOpts.FloatingPointState.BytePointer())
-	}
-
+	// Perform the switch
+	kernelExitToUser()
 	vector = c.vecCode
-
-	*/
 	return
 }
