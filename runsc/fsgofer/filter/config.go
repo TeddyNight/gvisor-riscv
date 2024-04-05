@@ -148,11 +148,6 @@ var allowedSyscalls = seccomp.MakeSyscallRules(map[uintptr]seccomp.SyscallRule{
 			seccomp.EqualTo(unix.MSG_DONTWAIT | unix.MSG_TRUNC | unix.MSG_PEEK),
 		},
 	},
-<<<<<<< HEAD
-=======
-	// riscv64 only supports SYS_RENAMEAT2
-	//unix.SYS_RENAMEAT:        seccomp.MatchAll{},
->>>>>>> bd30f7c45 (Initial support for riscv64)
 	unix.SYS_RESTART_SYSCALL: seccomp.MatchAll{},
 	// May be used by the runtime during panic().
 	unix.SYS_RT_SIGACTION:   seccomp.MatchAll{},
@@ -239,7 +234,8 @@ var lisafsFilters = seccomp.MakeSyscallRules(map[uintptr]seccomp.SyscallRule{
 	unix.SYS_MKDIRAT:    seccomp.MatchAll{},
 	unix.SYS_MKNODAT:    seccomp.MatchAll{},
 	unix.SYS_READLINKAT: seccomp.MatchAll{},
-	unix.SYS_RENAMEAT:   seccomp.MatchAll{},
+	// riscv64 only supports SYS_RENAMEAT2
+	//unix.SYS_RENAMEAT:   seccomp.MatchAll{},
 	unix.SYS_SYMLINKAT:  seccomp.MatchAll{},
 	unix.SYS_FTRUNCATE:  seccomp.MatchAll{},
 	unix.SYS_UNLINKAT:   seccomp.MatchAll{},
