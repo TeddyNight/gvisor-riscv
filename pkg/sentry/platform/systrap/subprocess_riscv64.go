@@ -47,26 +47,26 @@ func createSyscallRegs(initRegs *arch.Registers, sysno uintptr, args ...arch.Sys
 	regs := *initRegs
 
 	// Set our syscall number.
-	// r8 for the syscall number.
-	// r0-r6 is used to store the parameters.
-	regs.Regs[8] = uint64(sysno)
+	// a7 for the syscall number.
+	// a0-a5 is used to store the parameters.
+	regs.Regs[17] = uint64(sysno)
 	if len(args) >= 1 {
-		regs.Regs[0] = args[0].Uint64()
+		regs.Regs[10] = args[0].Uint64()
 	}
 	if len(args) >= 2 {
-		regs.Regs[1] = args[1].Uint64()
+		regs.Regs[11] = args[1].Uint64()
 	}
 	if len(args) >= 3 {
-		regs.Regs[2] = args[2].Uint64()
+		regs.Regs[12] = args[2].Uint64()
 	}
 	if len(args) >= 4 {
-		regs.Regs[3] = args[3].Uint64()
+		regs.Regs[13] = args[3].Uint64()
 	}
 	if len(args) >= 5 {
-		regs.Regs[4] = args[4].Uint64()
+		regs.Regs[14] = args[4].Uint64()
 	}
 	if len(args) >= 6 {
-		regs.Regs[5] = args[5].Uint64()
+		regs.Regs[15] = args[5].Uint64()
 	}
 
 	return regs
@@ -80,7 +80,7 @@ func updateSyscallRegs(regs *arch.Registers) {
 
 // syscallReturnValue extracts a sensible return from registers.
 func syscallReturnValue(regs *arch.Registers) (uintptr, error) {
-	rval := int64(regs.Regs[0])
+	rval := int64(regs.Regs[10])
 	if rval < 0 {
 		return 0, unix.Errno(-rval)
 	}
@@ -95,11 +95,9 @@ func dumpRegs(regs *arch.Registers) string {
 	for i := 0; i < 32; i++ {
 		fmt.Fprintf(&m, "\tRegs[%d]\t = %016x\n", i, regs.Regs[i])
 	}
-	/*
-	fmt.Fprintf(&m, "\tSp\t = %016x\n", regs.Sp)
-	fmt.Fprintf(&m, "\tPc\t = %016x\n", regs.Pc)
-	fmt.Fprintf(&m, "\tPstate\t = %016x\n", regs.Pstate)
-	*/
+	fmt.Fprintf(&m, "\tSp\t = %016x\n", regs.Regs[2])
+	fmt.Fprintf(&m, "\tPc\t = %016x\n", regs.Regs[0])
+	//fmt.Fprintf(&m, "\tPstate\t = %016x\n", regs.Pstate)
 
 	return m.String()
 }
@@ -112,8 +110,8 @@ func (t *thread) adjustInitRegsRip() {
 
 // Pass the expected PPID to the child via S7 when creating stub process
 func initChildProcessPPID(initregs *arch.Registers, ppid int32) {
-	// R9 has to be set to 1 when creating stub process.
-	initregs.Regs[23] = _NEW_STUB
+	// S8 has to be set to 1 when creating stub process.
+	initregs.Regs[24] = _NEW_STUB
 }
 
 func maybePatchSignalInfo(regs *arch.Registers, signalInfo *linux.SignalInfo) (patched bool) {

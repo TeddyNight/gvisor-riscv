@@ -74,9 +74,9 @@ begin:
 	MOV $SYS_GETPID, A7
 	ECALL
 
-	BLT ZERO, A0, error
+	BLT A0, ZERO, error
 
-	ADDI $0, S8
+	MOV ZERO, S8
 
 	// SIGSTOP to wait for attach.
 	//
@@ -86,9 +86,9 @@ begin:
 	MOV $SIGSTOP, A1
 	ECALL
 
-	// The sentry sets S9 to $NEW_STUB when creating stub process.
+	// The sentry sets S8 to $NEW_STUB when creating stub process.
 	MOV  $NEW_STUB, T0
-	BEQ T0, S9, clone
+	BEQ T0, S8, clone
 
         // The sentry sets S8 to $RUN_SYSCALL_LOOP when creating a new syscall
         // thread.
@@ -98,7 +98,7 @@ begin:
 done:
 	// Notify the Sentry that syscall exited.
 	EBREAK
-	BEQ ZERO, ZERO, done // Be paranoid.
+	JMP done // Be paranoid.
 clone:
 	// subprocess.createStub clones a new stub process that is untraced,
 	// thus executing this code. We setup the PDEATHSIG before SIGSTOPing
@@ -108,7 +108,7 @@ clone:
 	BEQ ZERO, S7, begin
 
 	// The clone system call returned a non-zero value.
-	BEQ ZERO, ZERO, done
+	JMP done
 
 error:
 	// Exit with -errno.
@@ -133,14 +133,14 @@ syscall_loop:
 	// while (sentryMessage->state != R13) {
 	// 	futex(sentryMessage->state, FUTEX_WAIT, 0, NULL, NULL, 0);
 	// }
-        LW (S9), A0
+        MOV S9, A0
 	MOV $FUTEX_WAIT, A1
 	MOV $0, A2
 	MOV $0, A3
 	MOV $0, A4
 wait_for_syscall:
-	// Move the sentry message state to R2.
-	LW SENTRY_MESSAGE_STATE(S9), T1
+	// Move the sentry message state to T1.
+	MOVW SENTRY_MESSAGE_STATE(S9), T1
 	BEQ T1, S10, execute_syscall
 
 	MOV $SYS_FUTEX, A7
@@ -148,17 +148,17 @@ wait_for_syscall:
 	JMP wait_for_syscall
 
 execute_syscall:
-	LW  SENTRY_MESSAGE_SYSNO(S9), A7
-	LW  SENTRY_MESSAGE_ARG0(S9), A0
-	LW  SENTRY_MESSAGE_ARG1(S9), A1
-	LW  SENTRY_MESSAGE_ARG2(S9), A2
-	LW  SENTRY_MESSAGE_ARG3(S9), A3
-	LW  SENTRY_MESSAGE_ARG4(S9), A4
-	LW  SENTRY_MESSAGE_ARG5(S9), A5
+	MOV  SENTRY_MESSAGE_SYSNO(S9), A7
+	MOV  SENTRY_MESSAGE_ARG0(S9), A0
+	MOV  SENTRY_MESSAGE_ARG1(S9), A1
+	MOV  SENTRY_MESSAGE_ARG2(S9), A2
+	MOV  SENTRY_MESSAGE_ARG3(S9), A3
+	MOV  SENTRY_MESSAGE_ARG4(S9), A4
+	MOV  SENTRY_MESSAGE_ARG5(S9), A5
         ECALL
 
 	// stubMessage->ret = ret
-	SW A0, (STUB_MESSAGE_OFFSET + STUB_MESSAGE_RET)(S9)
+	MOV A0, (STUB_MESSAGE_OFFSET + STUB_MESSAGE_RET)(S9)
 
 	// for {
 	//   if futex(sentryMessage->state, FUTEX_WAKE, 1) == 1 {
@@ -172,7 +172,7 @@ execute_syscall:
 	MOV $0, A5
 	MOV $SYS_FUTEX, A7
 wake_up_sentry:
-	LW (S9), A0
+	MOV S9, A0
 	ECALL
 
 	// futex returns the number of waiters that were woken up.  If futex
@@ -196,5 +196,5 @@ TEXT ·addrOfInitStubProcess(SB), $0-8
 // arbitrary location, and stub has a specific binary API (see above).
 TEXT ·stubCall(SB),NOSPLIT,$0-16
 	MOV  addr+0(FP), A0
-	MOV  pid+8(FP), A7
-	JALR A0, X0
+	MOV  pid+8(FP), S7
+	JMP (A0)

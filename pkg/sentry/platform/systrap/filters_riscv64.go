@@ -18,8 +18,7 @@
 package systrap
 
 import (
-	//"golang.org/x/sys/unix"
-	//"gvisor.dev/gvisor/pkg/abi/linux"
+	"golang.org/x/sys/unix"
 	"gvisor.dev/gvisor/pkg/seccomp"
 )
 
@@ -27,20 +26,16 @@ import (
 // by the systrap platform.
 func archSyscallFilters() seccomp.SyscallRules {
 	return seccomp.MakeSyscallRules(map[uintptr]seccomp.SyscallRule{
-		/*
 		unix.SYS_PTRACE: seccomp.Or{
 			seccomp.PerArg{
 				seccomp.EqualTo(unix.PTRACE_GETREGSET),
 				seccomp.AnyValue{},
-				seccomp.EqualTo(linux.NT_ARM_TLS),
 			},
 			seccomp.PerArg{
 				seccomp.EqualTo(unix.PTRACE_SETREGSET),
 				seccomp.AnyValue{},
-				seccomp.EqualTo(linux.NT_ARM_TLS),
 			},
 		},
-		*/
 	})
 }
 

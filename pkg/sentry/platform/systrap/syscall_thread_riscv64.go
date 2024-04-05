@@ -36,6 +36,7 @@ func (t *syscallThread) detach() {
 	regs.Regs[2] = 0
 	regs.Regs[25] = uint64(t.stubAddr)
 	regs.Regs[26] = uint64(t.sentryMessage.state + 1)
+	// S8
 	regs.Regs[24] = _RUN_SYSCALL_LOOP
 	// Skip the syscall instruction.
 	regs.Regs[0] += arch.SyscallWidth

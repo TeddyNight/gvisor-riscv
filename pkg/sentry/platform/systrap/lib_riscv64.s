@@ -16,7 +16,7 @@
 #include "textflag.h"
 
 TEXT ·spinloop(SB),NOSPLIT,$0
-	//YIELD
+	WORD $0x100000F //PAUSE
 	RET
 
 TEXT ·cputicks(SB),NOSPLIT,$0-8

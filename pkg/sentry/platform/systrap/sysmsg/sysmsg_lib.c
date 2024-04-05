@@ -92,8 +92,8 @@ static __inline__ unsigned long rdtsc(void) {
 }
 
 static __inline__ void spinloop(void) {
-    int dummy;
-    __asm__ __volatile__ ("div %0, %0, zero" : "=r" (dummy));
+	// encoded PAUSE
+	__asm__ __volatile__ (".4byte 0x100000F");
 }
 #endif
 
