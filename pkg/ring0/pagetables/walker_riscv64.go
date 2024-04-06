@@ -63,9 +63,52 @@ func (w *Walker) iterateRangeCanonical(start, end uintptr) bool {
 					continue
 				}
 
+				// This level has 1-GB sect pages. Is this
+				// entire region at least as large as a single
+				// PUD entry?  If so, we can skip allocating a
+				// new page for the pmd.
+				if start&(pudSize-1) == 0 && end-start >= pudSize {
+					pudEntry.SetSect()
+					if !w.visitor.visit(uintptr(start), pudEntry, pudSize-1) {
+						return false
+					}
+					if pudEntry.Valid() {
+						start = next(start, pudSize)
+						continue
+					}
+				}
+
 				// Allocate a new pud.
 				pmdEntries = w.pageTables.Allocator.NewPTEs()
 				pudEntry.setPageTable(w.pageTables, pmdEntries)
+
+			} else if pudEntry.IsSect() {
+				// Does this page need to be split?
+				if w.visitor.requiresSplit() && (start&(pudSize-1) != 0 || end < next(start, pudSize)) {
+					// Install the relevant entries.
+					pmdEntries = w.pageTables.Allocator.NewPTEs()
+					for index := uint16(0); index < entriesPerPage; index++ {
+						pmdEntries[index].SetSect()
+						pmdEntries[index].Set(
+							pudEntry.Address()+(pmdSize*uintptr(index)),
+							pudEntry.Opts())
+					}
+					pudEntry.setPageTable(w.pageTables, pmdEntries)
+				} else {
+					// A sect page to be checked directly.
+					if !w.visitor.visit(uintptr(start), pudEntry, pudSize-1) {
+						return false
+					}
+
+					// Might have been cleared.
+					if !pudEntry.Valid() {
+						clearPUDEntries++
+					}
+
+					// Note that the sect page was changed.
+					start = next(start, pudSize)
+					continue
+				}
 
 			} else {
 				pmdEntries = w.pageTables.Allocator.LookupPTEs(pudEntry.Address())
@@ -87,9 +130,50 @@ func (w *Walker) iterateRangeCanonical(start, end uintptr) bool {
 						continue
 					}
 
+					// This level has 2-MB huge pages. If this
+					// region is continued in a single PMD entry?
+					// As above, we can skip allocating a new page.
+					if start&(pmdSize-1) == 0 && end-start >= pmdSize {
+						pmdEntry.SetSect()
+						if !w.visitor.visit(uintptr(start), pmdEntry, pmdSize-1) {
+							return false
+						}
+						if pmdEntry.Valid() {
+							start = next(start, pmdSize)
+							continue
+						}
+					}
+
 					// Allocate a new pmd.
 					pteEntries = w.pageTables.Allocator.NewPTEs()
 					pmdEntry.setPageTable(w.pageTables, pteEntries)
+
+				} else if pmdEntry.IsSect() {
+					// Does this page need to be split?
+					if w.visitor.requiresSplit() && (start&(pmdSize-1) != 0 || end < next(start, pmdSize)) {
+						// Install the relevant entries.
+						pteEntries = w.pageTables.Allocator.NewPTEs()
+						for index := uint16(0); index < entriesPerPage; index++ {
+							pteEntries[index].Set(
+								pmdEntry.Address()+(pteSize*uintptr(index)),
+								pmdEntry.Opts())
+						}
+						pmdEntry.setPageTable(w.pageTables, pteEntries)
+					} else {
+						// A huge page to be checked directly.
+						if !w.visitor.visit(uintptr(start), pmdEntry, pmdSize-1) {
+							return false
+						}
+
+						// Might have been cleared.
+						if !pmdEntry.Valid() {
+							clearPMDEntries++
+						}
+
+						// Note that the huge page was changed.
+						start = next(start, pmdSize)
+						continue
+					}
 
 				} else {
 					pteEntries = w.pageTables.Allocator.LookupPTEs(pmdEntry.Address())

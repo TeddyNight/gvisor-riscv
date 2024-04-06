@@ -57,7 +57,7 @@ type PTE uintptr
 const (
 	// R/W access permission
 	//typeTable   = 0x3 << 1
-	typeSect      = 0x1 << 0
+	typeSect      = pteValid | readable
 	//typePage    = 0x3 << 1
 	pteValid      = 0x1 << 0
 	present       = pteValid
@@ -77,7 +77,7 @@ const (
 
 const (
 	// include RSW
-	optionMask = 0x2ff
+	optionMask = 0x3ff
 	protDefault = present | accessed | user
 )
 
@@ -153,6 +153,27 @@ func (p *PTE) Opts() MapOpts {
 		Global: v&global != 0,
 		User:   v&user != 0,
 	}
+}
+
+// SetSect sets this page as a sect page.
+//
+// The page must not be valid or a panic will result.
+// riscv-privileged-v1.10 4.3 Virtual Address Translation Process
+//
+//go:nosplit
+func (p *PTE) SetSect() {
+	if p.Valid() {
+		// This is not allowed.
+		panic("SetSect called on valid page!")
+	}
+	atomic.StoreUintptr((*uintptr)(p), typeSect)
+}
+
+// IsSect returns true iff this page is a sect page.
+//
+//go:nosplit
+func (p *PTE) IsSect() bool {
+	return atomic.LoadUintptr((*uintptr)(p))&typeSect == typeSect
 }
 
 // setPageTable sets this PTE value and forces the write bit and sect bit to

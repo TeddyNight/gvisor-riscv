@@ -20,7 +20,7 @@ package pagetables
 // additional refactoring would be necessary to support five-level pagetables.
 const (
 	lowerTop    = 0x00007fffffffffff
-	upperBottom = 0xffff800000000000
+	upperBottom = 0x0000800000000000
 
 	pteShift = 12
 	pmdShift = 21

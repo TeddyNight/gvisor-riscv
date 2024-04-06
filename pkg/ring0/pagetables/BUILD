@@ -91,9 +91,11 @@ go_test(
     srcs = [
         "pagetables_amd64_test.go",
         "pagetables_arm64_test.go",
+        "pagetables_riscv64_test.go",
         "pagetables_test.go",
         ":walker_check_amd64",
         ":walker_check_arm64",
+        ":walker_check_riscv64",
     ],
     library = ":pagetables",
     deps = ["//pkg/hostarch"],

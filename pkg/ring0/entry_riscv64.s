@@ -24,7 +24,13 @@ TEXT ·Halt(SB),NOSPLIT,$0
 	WORD $0x10500073 //WFI
 	RET
 
+TEXT ·kernelExitToSupervisor(SB),NOSPLIT,$0
+	SRET
+
 TEXT ·kernelExitToUser(SB),NOSPLIT,$0
+	SRET
+
+TEXT ·S_software_interrupt(SB),NOSPLIT,$0
 	SRET
 
 // vectors implements exception vector table.

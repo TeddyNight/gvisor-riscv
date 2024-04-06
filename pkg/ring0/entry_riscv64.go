@@ -31,3 +31,5 @@ func kernelExitToUser()
 
 // Shutdown execution
 func Shutdown()
+
+func S_software_interrupt()	
