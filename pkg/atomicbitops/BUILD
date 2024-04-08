@@ -14,6 +14,7 @@ go_library(
         "aligned_64bit.go",
         "atomicbitops.go",
         "atomicbitops_amd64.s",
+        "atomicbitops_riscv64.s",
         "atomicbitops_arm64.go",
         "atomicbitops_arm64.s",
         "atomicbitops_float64.go",
