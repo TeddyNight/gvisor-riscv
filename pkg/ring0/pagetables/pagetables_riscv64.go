@@ -216,7 +216,7 @@ const (
 	//ttbrASIDOffset = 48
 	//ttbrASIDMask   = 0xff
 	satpASIDOffset = 44
-	satpPPNOffset = 14
+	satpPPNOffset = 12
 	// Sv48
 	satpMode = 9 << 60
 
