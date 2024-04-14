@@ -25,14 +25,22 @@ import (
 
 // archPageTables is architecture-specific data.
 type archPageTables struct {
+	// root is the pagetable root for kernel space.
+	root *PTEs
+
+	// rootPhysical is the cached physical address of the root.
+	//
+	// This is saved only to prevent constant translation.
+	rootPhysical uintptr
+
 	asid uint16
 }
 
-// SATP returns the translation table base register 0.
+// SATP returns the translation table base register
 //
 //go:nosplit
 func (p *PageTables) SATP(noFlush bool, asid uint16) uint64 {
-	return (uint64(p.rootPhysical)>>satpPPNOffset) | (uint64(asid)<<satpASIDOffset) | uint64(satpMode)
+	return ((uint64(p.rootPhysical)>>satpPPNOffset)&satpPPNMask) | (uint64(asid)<<satpASIDOffset) | uint64(satpMode)
 }
 
 // MapOpts are x86 options.
@@ -57,7 +65,7 @@ type PTE uintptr
 const (
 	// R/W access permission
 	//typeTable   = 0x3 << 1
-	typeSect      = pteValid | readable
+	typeSect      = pteValid | readable | executable
 	//typePage    = 0x3 << 1
 	pteValid      = 0x1 << 0
 	present       = pteValid
@@ -73,19 +81,22 @@ const (
 	dirty       = 0x1 << 7
 
 	typeTable   = 0x1 << 0
+	pageOffset  = 12
 )
 
 const (
 	// include RSW
-	optionMask = 0x3ff
-	protDefault = present | accessed | user
+	optionOffset = 10
+	optionMask   = 0x3ff
+	ppnMask      = 0x3ffffffffffc00
+	protDefault  = present | accessed | user
 )
 
 // Address extracts the address. This should only be used if Valid returns true.
 //
 //go:nosplit
 func (p *PTE) Address() uintptr {
-	return atomic.LoadUintptr((*uintptr)(p)) &^ optionMask
+	return (atomic.LoadUintptr((*uintptr)(p)) &^ optionMask) << (pageOffset - optionOffset)
 }
 
 // Set sets this PTE value.
@@ -94,7 +105,7 @@ func (p *PTE) Address() uintptr {
 //
 //go:nosplit
 func (p *PTE) Set(addr uintptr, opts MapOpts) {
-	v := (addr &^ optionMask) | readable | protDefault
+	v := ((addr >> (pageOffset - optionOffset)) & ppnMask) | readable | protDefault
 
 	if !opts.AccessType.Any() {
 		// Leave as non-valid if no access is available.
@@ -122,7 +133,7 @@ func (p *PTE) Set(addr uintptr, opts MapOpts) {
 	atomic.StoreUintptr((*uintptr)(p), v)
 }
 
-// Clear clears this PTE, including sect page information.
+// Clear clears this PTE, including the super page information
 //
 //go:nosplit
 func (p *PTE) Clear() {
@@ -166,14 +177,14 @@ func (p *PTE) SetSect() {
 		// This is not allowed.
 		panic("SetSect called on valid page!")
 	}
-	atomic.StoreUintptr((*uintptr)(p), typeSect)
+	atomic.StoreUintptr((*uintptr)(p), protDefault | readable)
 }
 
 // IsSect returns true iff this page is a sect page.
 //
 //go:nosplit
 func (p *PTE) IsSect() bool {
-	return atomic.LoadUintptr((*uintptr)(p))&typeSect == typeSect
+	return atomic.LoadUintptr((*uintptr)(p)) & (writable | executable | readable) != 0
 }
 
 // setPageTable sets this PTE value and forces the write bit and sect bit to
@@ -186,7 +197,7 @@ func (p *PTE) setPageTable(pt *PageTables, ptes *PTEs) {
 		// This should never happen.
 		panic("unaligned physical address!")
 	}
-	v := addr | typeTable | protDefault
+	v := ((addr >> (pageOffset - optionOffset)) & ppnMask) | typeTable
 	atomic.StoreUintptr((*uintptr)(p), v)
 }
 
@@ -217,8 +228,9 @@ const (
 	//ttbrASIDMask   = 0xff
 	satpASIDOffset = 44
 	satpPPNOffset = 12
+	satpPPNMask   = 0xfffffffffff
 	// Sv48
-	satpMode = 9 << 60
+	satpMode = 0x9000000000000000
 
 	entriesPerPage = 512
 )
@@ -231,7 +243,7 @@ const (
 func (p *PageTables) InitArch(allocator Allocator) {
 	if p.upperSharedPageTables != nil {
 		p.cloneUpperShared()
-	} 
+	}
 }
 
 //go:nosplit
