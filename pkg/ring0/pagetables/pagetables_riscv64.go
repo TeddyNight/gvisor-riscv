@@ -89,7 +89,7 @@ const (
 	optionOffset = 10
 	optionMask   = 0x3ff
 	ppnMask      = 0x3ffffffffffc00
-	protDefault  = present | accessed | user
+	protDefault  = present | accessed | user | dirty
 )
 
 // Address extracts the address. This should only be used if Valid returns true.
