@@ -38,11 +38,16 @@
 // See bluepill.go.
 TEXT ·bluepill(SB),NOSPLIT,$0
 begin:
-	MOV	vcpu+0(FP), T1
-	MOV	$VCPU_CPU(T1), T2
-	//ORR $0xffff000000000
+	MOV	arg+0(FP), A1
+	MOV	$VCPU_CPU(A1), A2
+	//ORI	$0xffff800000000000, A2
+	LUI	$-0x80000, T0
+	SLLI	$0x10, T0
+	OR	T0, A2
+	// Trigger SIGILL
+	WORD	$0x140026f3 // csrr a3, sscratch
 check_vcpu:
-	BEQ	T2, TP, right_vcpu
+	BEQ	A2, A3, right_vcpu
 wrong_vcpu:
 	CALL	·redpill(SB)
 	JMP	begin
@@ -59,7 +64,7 @@ right_vcpu:
 //
 TEXT ·sighandler(SB),NOSPLIT,$0
 	MOV	SIGINFO_SIGNO(A1), T1
-	MOV	$1, T2
+	MOV	$4, T2
 	BNE	T1, T2, fallback
 
 	MOV	CONTEXT_PC(A2), T1
@@ -72,7 +77,8 @@ TEXT ·sighandler(SB),NOSPLIT,$0
 
 fallback:
 	// Jump to the previous signal handler.
-	JMP	·savedHandler(SB)
+	MOV	·savedHandler(SB), T1
+	JMP	(T1)
 
 // func addrOfSighandler() uintptr
 TEXT ·addrOfSighandler(SB), $0-8
@@ -103,7 +109,8 @@ TEXT ·sigsysHandler(SB),NOSPLIT,$0
 
 fallback:
 	// Jump to the previous signal handler.
-	JMP	·savedHandler(SB)
+	MOV	·savedHandler(SB), T1
+	JMP	(T1)
 
 // func addrOfSighandler() uintptr
 TEXT ·addrOfSigsysHandler(SB), $0-8
