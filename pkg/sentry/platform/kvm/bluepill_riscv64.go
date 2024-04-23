@@ -32,7 +32,7 @@ var (
 //
 //go:nosplit
 func bluepillArchEnter(context *arch.SignalContext64) (c *vCPU) {
-	c = vCPUPtr(uintptr(context.Regs[8]))
+	c = vCPUPtr(uintptr(context.Regs[11]))
 	regs := c.CPU.Registers()
 	regs.Regs = context.Regs
 	/*
@@ -40,7 +40,7 @@ func bluepillArchEnter(context *arch.SignalContext64) (c *vCPU) {
 	regs.Regs[32] |= ring0.KernelFlagSet
 	*/
 
-	return
+	return c
 }
 
 // bluepillArchExit is called during bluepillEnter.
@@ -49,20 +49,14 @@ func bluepillArchEnter(context *arch.SignalContext64) (c *vCPU) {
 func bluepillArchExit(c *vCPU, context *arch.SignalContext64) {
 	regs := c.CPU.Registers()
 	context.Regs = regs.Regs
+	fpRegs := fpRegsPtr(c.FloatingPointState().BytePointer()) // escapes: no
+	context.FpRegs.Fcsr = fpRegs.Fcsr
+	context.FpRegs.Regs = fpRegs.Regs
 	/*
 	regs.Regs[32] &^= uint64(ring0.PsrFlagsClear)
 	regs.Regs[32] |= ring0.UserFlagSet
 	*/
 
-	/*
-	lazyVfp := c.GetLazyVFP()
-	if lazyVfp != 0 {
-		fpsimd := fpsimdPtr(c.FloatingPointState().BytePointer()) // escapes: no
-		context.Fpsimd64.Fpsr = fpsimd.Fpsr
-		context.Fpsimd64.Fpcr = fpsimd.Fpcr
-		context.Fpsimd64.Vregs = fpsimd.Vregs
-	}
-	*/
 }
 
 // KernelSyscall handles kernel syscalls.
@@ -87,6 +81,11 @@ func (c *vCPU) KernelSyscall() {
 		ring0.SaveVRegs(c.FloatingPointState().BytePointer()) // escapes: no
 	}
 	*/
+
+	fpRegs := fpRegsPtr(c.FloatingPointState().BytePointer()) // escapes: no
+	fcsr := ring0.GetFCSR()
+	fpRegs.Fcsr = uint32(fcsr)
+	ring0.SaveFpRegs(c.FloatingPointState().BytePointer()) // escapes: no
 
 	ring0.Halt()
 }
@@ -113,6 +112,10 @@ func (c *vCPU) KernelException(vector ring0.Vector) {
 		ring0.SaveVRegs(c.FloatingPointState().BytePointer()) // escapes: no
 	}
 	*/
+	fpRegs := fpRegsPtr(c.FloatingPointState().BytePointer()) // escapes: no
+	fcsr := ring0.GetFCSR()
+	fpRegs.Fcsr = uint32(fcsr)
+	ring0.SaveFpRegs(c.FloatingPointState().BytePointer()) // escapes: no
 
 	ring0.Halt()
 }

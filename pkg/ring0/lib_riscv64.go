@@ -41,24 +41,17 @@ func FlushTlbAll()
 // CPACREL1 returns the value of the CPACR_EL1 register.
 func CPACREL1() (value uintptr)
 
-// GetFPCR returns the value of FPCR register.
-func GetFPCR() (value uintptr)
+// GetFCSR returns the value of FCSR register.
+func GetFCSR() (value uintptr)
 
-// SetFPCR writes the FPCR value.
-func SetFPCR(value uintptr)
+// SetFCSR writes the FCSR value.
+func SetFCSR(value uintptr)
 
-// GetFPSR returns the value of FPSR register.
-func GetFPSR() (value uintptr)
+// SaveFpRegs saves f0-f31 registers.
+func SaveFpRegs(*byte)
 
-// SetFPSR writes the FPSR value.
-func SetFPSR(value uintptr)
-
-// SaveVRegs saves V0-V31 registers.
-// V0-V31: 32 128-bit registers for floating point and simd.
-func SaveVRegs(*byte)
-
-// LoadVRegs loads V0-V31 registers.
-func LoadVRegs(*byte)
+// LoadFpRegs loads f0-f31 registers.
+func LoadFpRegs(*byte)
 
 // LoadFloatingPoint loads floating point state.
 func LoadFloatingPoint(*byte)
