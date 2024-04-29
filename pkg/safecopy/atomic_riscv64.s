@@ -11,35 +11,23 @@
 // It must have the same frame configuration as swapUint32 so that it can undo
 // any potential call frame set up by the assembler.
 TEXT handleSwapUint32Fault(SB), NOSPLIT, $0-24
-	ADDI sig+20(FP), ZERO, T0
-	SW A1, (T0)
+	MOVW A1, sig+20(FP)
 	RET
 
 // See the corresponding doc in safecopy_unsafe.go
 //
-// The code is derived from Go source runtime/internal/atomic.Cas.
+// The code is derived from Go source runtime/internal/atomic.Xchg.
 //
 //func swapUint32(ptr unsafe.Pointer, new uint32) (old uint32, sig int32)
 TEXT ·swapUint32(SB), NOSPLIT, $0-24
 	// Store 0 as the returned signal number. If we run to completion,
 	// this is the value the caller will see; if a signal is received,
 	// handleSwapUint32Fault will store a different value in this address.
-	ADDI sig+20(FP), ZERO, T0
-	SW ZERO, (T0)
+	MOVW	ZERO, sig+20(FP)
 	MOV	ptr+0(FP), A0
-	MOVW	old+8(FP), A1
-	MOVW	new+12(FP), A2
-cas_again:
-	LRW	(A0), A3
-	BNE	A3, A1, cas_fail
-	SCW	A2, (A0), A4
-	BNE	A4, ZERO, cas_again
-	MOV	$1, A0
-	MOVB	A0, ret+16(FP)
-	RET
-cas_fail:
-	MOV	$0, A0
-	MOV	A0, ret+16(FP)
+	MOVW	new+8(FP), A1
+	AMOSWAPW A1, (A0), A1
+	MOVW	A1, old+16(FP)
 	RET
 
 // func addrOfSwapUint32() uintptr
@@ -55,7 +43,7 @@ TEXT ·addrOfSwapUint32(SB), $0-8
 // It must have the same frame configuration as swapUint64 so that it can undo
 // any potential call frame set up by the assembler.
 TEXT handleSwapUint64Fault(SB), NOSPLIT, $0-28
-	MOV  A1, sig+24(FP)
+	MOVW  A1, sig+24(FP)
 	RET
 
 // See the corresponding doc in safecopy_unsafe.go
@@ -67,10 +55,11 @@ TEXT ·swapUint64(SB), NOSPLIT, $0-28
 	// Store 0 as the returned signal number. If we run to completion,
 	// this is the value the caller will see; if a signal is received,
 	// handleSwapUint64Fault will store a different value in this address.
-	MOV	ZERO, sig+24(FP)
+	MOVW	ZERO, sig+24(FP)
 	MOV	ptr+0(FP), A0
-	MOV	val+8(FP), A1
-	AMOSWAPD A1, (A0), ZERO
+	MOV	new+8(FP), A1
+	AMOSWAPD A1, (A0), A1
+	MOV	A1, old+16(FP)
 	RET
 
 // func addrOfSwapUint64() uintptr
@@ -79,14 +68,14 @@ TEXT ·addrOfSwapUint64(SB), $0-8
 	MOV	A0, ret+0(FP)
 	RET
 
-// handleCompareAndSwapUint32Fault returns the value stored in R1. Control is
+// handleCompareAndSwapUint32Fault returns the value stored in A0. Control is
 // transferred to it when compareAndSwapUint32 below receives SIGSEGV or SIGBUS,
 // with the signal number stored in R1.
 //
 // It must have the same frame configuration as compareAndSwapUint32 so that it
 // can undo any potential call frame set up by the assembler.
 TEXT handleCompareAndSwapUint32Fault(SB), NOSPLIT, $0-24
-	MOV A1, sig+20(FP)
+	MOVW A1, sig+20(FP)
 	RET
 
 // See the corresponding doc in safecopy_unsafe.go
@@ -99,7 +88,7 @@ TEXT ·compareAndSwapUint32(SB), NOSPLIT, $0-24
 	// the value the caller will see; if a signal is received,
 	// handleCompareAndSwapUint32Fault will store a different value in this
 	// address.
-	MOV  ZERO, sig+20(FP)
+	MOVW	ZERO, sig+20(FP)
 
 	MOV	ptr+0(FP), A0
 	MOVW	old+8(FP), A1
@@ -109,12 +98,10 @@ cas_again:
 	BNE	A3, A1, cas_fail
 	SCW	A2, (A0), A4
 	BNE	A4, ZERO, cas_again
-	MOV	$1, A0
-	MOVB	A0, ret+16(FP)
+	MOVW	A3, prev+16(FP)
 	RET
 cas_fail:
-	MOV	$0, A0
-	MOV	A0, ret+16(FP)
+	MOVW	A3, prev+16(FP)
 	RET
 
 // func addrOfCompareAndSwapUint32() uintptr
@@ -125,12 +112,12 @@ TEXT ·addrOfCompareAndSwapUint32(SB), $0-8
 
 // handleLoadUint32Fault returns the value stored in DI. Control is transferred
 // to it when LoadUint32 below receives SIGSEGV or SIGBUS, with the signal
-// number stored in DI.
+// number stored in A1.
 //
 // It must have the same frame configuration as loadUint32 so that it can undo
 // any potential call frame set up by the assembler.
 TEXT handleLoadUint32Fault(SB), NOSPLIT, $0-16
-	MOV  A1, sig+12(FP)
+	MOVW  A1, sig+12(FP)
 	RET
 
 // loadUint32 atomically loads *ptr and returns it. If a SIGSEGV or SIGBUS
@@ -147,8 +134,8 @@ TEXT ·loadUint32(SB), NOSPLIT, $0-16
 	MOVW 	ZERO, sig+12(FP)
 
 	MOV	ptr+0(FP), A0
-	LRW	(A0), A0
-	MOVW	A0, val+8(FP)
+	LRW	(A0), A1
+	MOVW	A1, val+8(FP)
 	RET
 
 // func addrOfLoadUint32() uintptr

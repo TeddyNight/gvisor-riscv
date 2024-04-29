@@ -11,10 +11,8 @@
 // It must have the same frame configuration as memclr so that it can undo any
 // potential call frame set up by the assembler.
 TEXT handleMemclrFault(SB), NOSPLIT, $0-28
-	ADDI addr+16(FP), T0
-	ADDI sig+24(FP), T1
-	SD A0, (T0)
-	SD A1, (T1)
+	MOV	A0, addr+16(FP)
+	MOV	A1, sig+24(FP)
 	RET
 
 // See the corresponding doc in safecopy_unsafe.go
@@ -26,12 +24,9 @@ TEXT ·memclr(SB), NOSPLIT, $0-28
 	// Store 0 as the returned signal number. If we run to completion,
 	// this is the value the caller will see; if a signal is received,
 	// handleMemclrFault will store a different value in this address.
-	ADDI sig+24(FP), T0
-	SW ZERO, (T0)
-	ADDI ptr+0(FP), T0
-	ADDI n+8(FP), T1
-	LD (T0), A0
-	LD (T1), A1
+	MOV ZERO, sig+24(FP)
+	MOV ptr+0(FP), A0
+	MOV n+8(FP), A1
 
 	// If less than 8 bytes, do single byte zeroing.
 	MOV	$8, X9
@@ -45,8 +40,7 @@ TEXT ·memclr(SB), NOSPLIT, $0-28
 	SUB	X5, X9, X5
 	SUB	X5, X11, X11
 align:
-	ADDI    $1, ZERO, A2
-	SUB	A2, X5
+	SUB	$1, X5
 	MOVB	ZERO, 0(X10)
 	ADD	$1, X10
 	BNEZ	X5, align
@@ -70,8 +64,7 @@ loop64:
 	MOV	ZERO, 48(X10)
 	MOV	ZERO, 56(X10)
 	ADD	$64, X10
-	ADDI    $64, ZERO, A2
-	SUB	A2, X11
+	SUB	$64, X11
 	BGE	X11, X9, loop64
 	BEQZ	X11, done
 
@@ -84,8 +77,7 @@ zero32:
 	MOV	ZERO, 16(X10)
 	MOV	ZERO, 24(X10)
 	ADD	$32, X10
-	ADDI    $32, ZERO, A2
-	SUB	A2, X11
+	SUB	$32, X11
 	BEQZ	X11, done
 
 check16:
@@ -95,8 +87,7 @@ zero16:
 	MOV	ZERO, 0(X10)
 	MOV	ZERO, 8(X10)
 	ADD	$16, X10
-	ADDI    $16, ZERO, A2
-	SUB	A2, X11
+	SUB	$16, X11
 	BEQZ	X11, done
 
 check8:
@@ -105,8 +96,7 @@ check8:
 zero8:
 	MOV	ZERO, 0(X10)
 	ADD	$8, X10
-	ADDI    $8, ZERO, A2
-	SUB	A2, X11
+	SUB	$8, X11
 	BEQZ	X11, done
 
 check4:
@@ -118,15 +108,13 @@ zero4:
 	MOVB	ZERO, 2(X10)
 	MOVB	ZERO, 3(X10)
 	ADD	$4, X10
-	ADDI    $4, ZERO, A2
-	SUB	A2, X11
+	SUB	$4, X11
 
 loop1:
 	BEQZ	X11, done
 	MOVB	ZERO, 0(X10)
 	ADD	$1, X10
-	ADDI    $1, ZERO, A2
-	SUB	A2, X11
+	SUB	$1, X11
 	JMP	loop1
 
 done:

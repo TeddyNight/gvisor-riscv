@@ -19,9 +19,9 @@
 #define SIGSEGV 11
 
 // Offsets to the registers in context->uc_mcontext.gregs[].
-#define REG_A0 0x80
-#define REG_A1 0x88
-#define REG_PC 0x0
+#define REG_A0 0x100
+#define REG_A1 0x108
+#define REG_PC 0xB0
 
 // Offset to the si_addr field of siginfo.
 #define SI_CODE 0x08
@@ -32,8 +32,8 @@
 //
 // If the instruction causing the signal is within a safecopy-protected
 // function, the signal is handled such that execution resumes in the
-// appropriate fault handling stub with R0 containing the faulting address and
-// R1 containing the signal number. Otherwise control is transferred to the
+// appropriate fault handling stub with A0 containing the faulting address and
+// A1 containing the signal number. Otherwise control is transferred to the
 // previously configured signal handler (savedSigSegvHandler or
 // savedSigBusHandler).
 //
@@ -43,92 +43,91 @@
 // barriers).
 //
 // The arguments are the following:
-// R0 - The signal number.
-// R1 - Pointer to siginfo_t structure.
-// R2 - Pointer to ucontext structure.
+// A0 - The signal number.
+// A1 - Pointer to siginfo_t structure.
+// A2 - Pointer to ucontext structure.
 TEXT ·signalHandler(SB),NOSPLIT,$0
 	// Check if the signal is from the kernel, si_code > 0 means a kernel signal.
-	MOV SI_CODE(A1), A7
-	ANDI $0xffff, A7, T0
-	BLE ZERO, T0, original_handler
+	MOVW SI_CODE(A1), A7
+	BLE A7, ZERO, original_handler
 
 	// Check if PC is within the area we care about.
 	MOV REG_PC(A2), A7
 	MOV ·memcpyBegin(SB), A6
-	BLT A6, A7, not_memcpy
+	BLT A7, A6, not_memcpy
 	MOV ·memcpyEnd(SB), A6
-	BGE A6, A7, not_memcpy
+	BGE A7, A6, not_memcpy
 
 	// Modify the context such that execution will resume in the fault handler.
 	MOV $handleMemcpyFault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_memcpy:
 	MOV ·memclrBegin(SB), A6
-	BLT A6, A7, not_memclr
+	BLT A7, A6, not_memclr
 	MOV ·memclrEnd(SB), A6
-	BGE A6, A7, not_memclr
+	BGE A7, A6, not_memclr
 
 	MOV $handleMemclrFault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_memclr:
 	MOV ·swapUint32Begin(SB), A6
-	BLT A6, A7, not_swapuint32
+	BLT A7, A6, not_swapuint32
 	MOV ·swapUint32End(SB), A6
-	BGE A6, A7, not_swapuint32
+	BGE A7, A6, not_swapuint32
 
 	MOV $handleSwapUint32Fault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_swapuint32:
 	MOV ·swapUint64Begin(SB), A6
-	BLT A6, A7, not_swapuint64
+	BLT A7, A6, not_swapuint64
 	MOV ·swapUint64End(SB), A6
-	BGE A6, A7, not_swapuint64
+	BGE A7, A6, not_swapuint64
 
 	MOV $handleSwapUint64Fault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_swapuint64:
 	MOV ·compareAndSwapUint32Begin(SB), A6
-	BLT A6, A7, not_casuint32
+	BLT A7, A6, not_casuint32
 	MOV ·compareAndSwapUint32End(SB), A6
-	BGE A6, A7, not_casuint32
+	BGE A7, A6, not_casuint32
 
 	MOV $handleCompareAndSwapUint32Fault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_casuint32:
 	MOV ·loadUint32Begin(SB), A6
-	BLT A6, A7, not_loaduint32
+	BLT A7, A6, not_loaduint32
 	MOV ·loadUint32End(SB), A6
-	BGE A6, A7, not_loaduint32
+	BGE A7, A6, not_loaduint32
 
 	MOV $handleLoadUint32Fault(SB), A7
-	BEQ ZERO, ZERO, handle_fault
+	JMP handle_fault
 
 not_loaduint32:
 original_handler:
 	// Jump to the previous signal handler, which is likely the golang one.
 	MOV ·savedSigBusHandler(SB), A7
 	MOV ·savedSigSegVHandler(SB), A6
-	ADDI $SIGSEGV, ZERO, T0
-	BEQ T0, A0, is_sigsegv
+	MOV $SIGSEGV, A3
+	BEQ A3, A0, is_sigsegv
 	JMP (A7)
 is_sigsegv:
 	MOV A6, A7
 	JMP (A7)
 
 handle_fault:
-	// Entered with the address of the fault handler in R7; store it in PC.
+	// Entered with the address of the fault handler in A7; store it in PC.
 	MOV A7, REG_PC(A2)
 
-	// Store the faulting address in R0.
+	// Store the faulting address in A0.
 	MOV SI_ADDR(A1), A7
 	MOV A7, REG_A0(A2)
 
-	// Store the signal number in R1.
+	// Store the signal number in A1.
 	MOVW A0, REG_A1(A2)
 
 	RET
