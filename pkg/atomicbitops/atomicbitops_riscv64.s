@@ -19,22 +19,19 @@
 TEXT ·andUint32(SB),NOSPLIT,$0-12
 	MOV	addr+0(FP), A0
 	MOVW	val+8(FP), A1
-	AMOANDW	A1, (A0), A2
-	MOVW A2, ret+16(FP)
+	AMOANDW	A1, (A0), ZERO
   	RET
 
 TEXT ·orUint32(SB),NOSPLIT,$0-12
 	MOV	ptr+0(FP), A0
 	MOVW	val+8(FP), A1
-	AMOORW	A1, (A0), A2
-	MOVW	A2, ret+16(FP)
+	AMOORW	A1, (A0), ZERO
 	RET
 
 TEXT ·xorUint32(SB),NOSPLIT,$0-12
 	MOV	addr+0(FP), A0
 	MOV	val+8(FP), A1
-	AMOXORW	A1, (A0), A2
-	MOVW	A2, ret+16(FP)
+	AMOXORW	A1, (A0), ZERO
 	RET
 
 TEXT ·compareAndSwapUint32(SB),NOSPLIT,$0-20
@@ -46,33 +43,28 @@ cas_again:
 	BNE	A3, A1, cas_fail
 	SCW	A2, (A0), A4
 	BNE	A4, ZERO, cas_again
-	MOV	$1, A0
-	MOVB	A0, ret+16(FP)
+	MOVW	A3, ret+16(FP)
 	RET
 cas_fail:
-	MOV	$0, A0
-	MOV	A0, ret+16(FP)
+	MOVW	A3, ret+16(FP)
 	RET
 
 TEXT ·andUint64(SB),NOSPLIT,$0-16
 	MOV	addr+0(FP), A0
 	MOV	val+8(FP), A1
-	AMOANDD	A1, (A0), A2
-	MOV	A2, ret+16(FP)
+	AMOANDD	A1, (A0), ZERO
 	RET
 
 TEXT ·orUint64(SB),NOSPLIT,$0-16
 	MOV	addr+0(FP), A0
 	MOV	val+8(FP), A1
-	AMOORD	A1, (A0), A2
-	MOV	A2, ret+16(FP)
+	AMOORD	A1, (A0), ZERO
 	RET
 
 TEXT ·xorUint64(SB),NOSPLIT,$0-16
 	MOV	addr+0(FP), A0
 	MOV	val+8(FP), A1
-	AMOXORD	A1, (A0), A2
-	MOV	A2, ret+16(FP)
+	AMOXORD	A1, (A0), ZERO
 	RET
 
 TEXT ·compareAndSwapUint64(SB),NOSPLIT,$0-32
@@ -84,9 +76,8 @@ cas_again:
 	BNE	A3, A1, cas_fail
 	SCD	A2, (A0), A4
 	BNE	A4, ZERO, cas_again
-	MOV	$1, A0
-	MOVB	A0, ret+24(FP)
+	MOV	A3, ret+24(FP)
 	RET
 cas_fail:
-	MOVB	ZERO, ret+24(FP)
+	MOV	A3, ret+24(FP)
 	RET	
