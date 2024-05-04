@@ -18,7 +18,7 @@
 package kvm
 
 import (
-	//"fmt"
+	"fmt"
 	"runtime"
 
 	"golang.org/x/sys/unix"
@@ -62,8 +62,76 @@ func (m *machine) mapUpperHalf(pageTable *pagetables.PageTables) {
 	})
 }
 
+// archPhysicalRegions fills readOnlyGuestRegions and allocates separate
+// physical regions form them.
 func archPhysicalRegions(physicalRegions []physicalRegion) []physicalRegion {
-	return physicalRegions
+	rdRegions := []virtualRegion{}
+	if err := applyVirtualRegions(func(vr virtualRegion) {
+		if excludeVirtualRegion(vr) {
+			return // skip region.
+		}
+		if !vr.accessType.Write {
+			rdRegions = append(rdRegions, vr)
+		}
+	}); err != nil {
+		panic(fmt.Sprintf("error parsing /proc/self/maps: %v", err))
+	}
+
+	// Add an unreachable region.
+	rdRegions = append(rdRegions, virtualRegion{
+		region: region{
+			virtual: 0xffffffffffffffff,
+			length:  0,
+		},
+	})
+
+	var regions []physicalRegion
+	addValidRegion := func(r *physicalRegion, virtual, length uintptr, readOnly bool) {
+		if length == 0 {
+			return
+		}
+		regions = append(regions, physicalRegion{
+			region: region{
+				virtual: virtual,
+				length:  length,
+			},
+			physical: r.physical + (virtual - r.virtual),
+			readOnly: readOnly,
+		})
+	}
+	i := 0
+
+	for _, pr := range physicalRegions {
+		start := pr.virtual
+		end := pr.virtual + pr.length
+		for start < end {
+			rdRegion := rdRegions[i].region
+			rdStart := rdRegion.virtual
+			rdEnd := rdRegion.virtual + rdRegion.length
+			if rdEnd <= start {
+				i++
+				continue
+			}
+			if rdStart > start {
+				newEnd := rdStart
+				if end < rdStart {
+					newEnd = end
+				}
+				addValidRegion(&pr, start, newEnd-start, false)
+				start = rdStart
+				continue
+			}
+			if rdEnd < end {
+				addValidRegion(&pr, start, rdEnd-start, true)
+				start = rdEnd
+				continue
+			}
+			addValidRegion(&pr, start, end-start, start >= rdStart && end <= rdEnd)
+			start = end
+		}
+	}
+
+	return regions
 }
 
 // nonCanonical generates a canonical address return.
